@@ -13,6 +13,16 @@
 # Config file
 *.toml
 
+# TEX files
+*.tex
+*.aux
+*.out
+*.pdf
+*.synctex.gz
+
+# Word file
+*.docx
+
 # Build results
 [Dd]ebug/
 [Dd]ebugPublic/
