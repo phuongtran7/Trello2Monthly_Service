@@ -1,6 +1,8 @@
 #ifndef PCH_H
 #define PCH_H
 
+#define  _SILENCE_CXX17_ITERATOR_BASE_CLASS_DEPRECATION_WARNING
+
 // TODO: add headers that you want to pre-compile here
 #include <iostream>
 #include "cpprest/http_client.h"
@@ -13,5 +15,6 @@
 #include <optional>
 #include "cpptoml.h"
 #include <regex>
+#include <filesystem>
 
 #endif //PCH_H
