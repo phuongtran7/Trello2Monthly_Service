@@ -663,7 +663,7 @@ class monthly
 				console->critical("Received response status code from GET PDF: {}.", response.status_code());
 				throw;
 			}
-			console->info("Succeed in GETTING the PDF file to server.");
+			console->info("Succeed in GETTING the PDF file from server.");
 			return response.extract_json();
 		})
 			.then([=](json::value json_value)
@@ -704,7 +704,7 @@ class monthly
 				console->critical("Received response status code from GET PDF: {}.", response.status_code());
 				throw;
 			}
-			console->info("Succeed in GETTING the DOCX file to server.");
+			console->info("Succeed in GETTING the DOCX file from server.");
 			return response.extract_json();
 		})
 			.then([=](json::value json_value)
@@ -769,6 +769,36 @@ class monthly
 		}
 	}
 
+	bool delete_files()
+	{
+		uri_builder builder(U(""));
+		builder.append_query(U("name"), conversions::to_string_t(filename_));
+
+		pplx::task<bool> del_task = local_client_.request(methods::DEL, builder.to_string())
+			// Handle response headers arriving.
+			.then([=](http_response response)
+		{
+			if (response.status_code() != status_codes::OK)
+			{
+				console->critical("Received response status code from DEL file: {}.", response.status_code());
+				throw;
+			}
+			console->info("Succeed in DELETING all files from server.");
+			return true;
+		});
+
+		// Wait for all the outstanding I/O to complete and handle any exceptions
+		try
+		{
+			return del_task.get();
+		}
+		catch (const std::exception &e)
+		{
+			console->critical("Error exception: {}", e.what());
+			return false;
+		}
+	}
+
 public:
 	monthly() : client_(U("https://api.trello.com")), local_client_(U("http://localhost:34568"))
 	{
@@ -786,7 +816,7 @@ public:
 			{
 				get_pdf();
 				get_docx();
-
+				delete_files();
 				console->info("++++++++++++++++++++++++++++++++++++++++++++");
 				console->info("+ Completed. Please press any key to exit. +");
 				console->info("++++++++++++++++++++++++++++++++++++++++++++");

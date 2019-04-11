@@ -31,17 +31,17 @@ public:
 	}
 
 private:
-	void handle_get(http_request message);
-	void handle_put(http_request message);
-	void handle_post(http_request message);
-	void handle_delete(http_request message);
+	void handle_get(const http_request& message) const;
+	void handle_put(const http_request& message) const;
+	void handle_post(const http_request& message) const;
+	void handle_delete(const http_request& message) const;
 
 	http_listener m_listener_;
 };
 
 std::unique_ptr<server> httpserver;
 
-void server::handle_get(http_request message)
+void server::handle_get(const http_request& message) const
 {
 	// Get the number of querry
 	auto querry = uri::split_query(message.request_uri().query());
@@ -94,13 +94,14 @@ void server::handle_get(http_request message)
 	}
 }
 
-void server::handle_post(http_request message)
+void server::handle_post(const http_request& message) const
 {
-	// TODO: implement receive text file from client then convert to approriate output.
+	// Send OK reply
+	message.reply(status_codes::OK);
 }
 
 // Handle receive tex file from client
-void server::handle_put(http_request message)
+void server::handle_put(const http_request& message) const
 {
 	// Get the number of querry
 	auto querry = uri::split_query(message.request_uri().query());
@@ -114,7 +115,7 @@ void server::handle_put(http_request message)
 			auto convert = conversions::from_base64(extracted);
 			// The file name comes from the second querry
 			//const auto temp_file_name = conversions::to_utf8string(uri::decode(querry.at(U("name")))) + ".tex";
-			auto temp_file_name = conversions::to_utf8string(uri::decode(querry.at(U("name"))));
+			const auto temp_file_name = conversions::to_utf8string(uri::decode(querry.at(U("name"))));
 			std::ofstream fout(temp_file_name + ".tex", std::ios::out | std::ios::binary);
 			fout.write(reinterpret_cast<const char*>(&convert[0]), convert.size());
 			fout.close();
@@ -137,15 +138,28 @@ void server::handle_put(http_request message)
 	}
 	else
 	{
-		// Send OK reply
+		// Send BadRequest reply
 		message.reply(status_codes::BadRequest);
 	}
 }
 
-void server::handle_delete(http_request message)
+void server::handle_delete(const http_request& message) const
 {
-	// TODO: implement delete recieved text file and converted output when client received the files
-	// TODO: this has to make sure that none of the client files remains after finishing
+	// Get the number of querry
+	auto querry = uri::split_query(message.request_uri().query());
+
+	if (!querry.empty())
+	{
+		// Look for the file name to be deleted
+		// At this state there should only TEX, DOCX and PFD file left
+		const auto temp_file_name = conversions::to_utf8string(uri::decode(querry.at(U("name"))));
+		std::remove(fmt::format("{}", temp_file_name + ".tex").c_str());
+		std::remove(fmt::format("{}", temp_file_name + ".docx").c_str());
+		std::remove(fmt::format("{}", temp_file_name + ".pdf").c_str());
+
+		// Send OK reply
+		message.reply(status_codes::OK);
+	}
 }
 
 void on_initialize(const string_t& address)
