@@ -48,49 +48,38 @@ void server::handle_get(const http_request& message) const
 
 	if (!querry.empty())
 	{
-		if (!querry.empty())
+		if (uri::decode(querry.at(U("task"))) == U("PDF"))
 		{
-			if (uri::decode(querry.at(U("task"))) == U("PDF"))
-			{
-				// The client is requesting that it's ready for PDF
-				const auto filename_pdf = conversions::to_string_t(uri::decode(querry.at(U("name")))) + U(".pdf");
-				std::ifstream in_file(filename_pdf, std::ifstream::binary);
-				const std::vector<unsigned char> data((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
-				const auto code = conversions::to_base64(data);
+			// The client is requesting that it's ready for PDF
+			const auto filename_pdf = conversions::to_string_t(uri::decode(querry.at(U("name")))) + U(".pdf");
+			std::ifstream in_file(filename_pdf, std::ifstream::binary);
+			const std::vector<unsigned char> data((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
+			const auto code = conversions::to_base64(data);
 
-				json::value result = json::value::object();
-				result = json::value::string(code);
-				// Send OK reply
-				message.reply(status_codes::OK, result);
-			}
-		}
-		else
-		{
+			json::value result = json::value::object();
+			result = json::value::string(code);
 			// Send OK reply
-			message.reply(status_codes::BadRequest);
+			message.reply(status_codes::OK, result);
 		}
 
-		if (!querry.empty())
+		if (uri::decode(querry.at(U("task"))) == U("DOCX"))
 		{
-			if (uri::decode(querry.at(U("task"))) == U("DOCX"))
-			{
-				// The client is requesting that it's ready for docx
-				const auto filename_docx = conversions::to_string_t(uri::decode(querry.at(U("name")))) + U(".docx");
-				std::ifstream in_file(filename_docx, std::ifstream::binary);
-				const std::vector<unsigned char> data((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
-				const auto code = conversions::to_base64(data);
+			// The client is requesting that it's ready for docx
+			const auto filename_docx = conversions::to_string_t(uri::decode(querry.at(U("name")))) + U(".docx");
+			std::ifstream in_file(filename_docx, std::ifstream::binary);
+			const std::vector<unsigned char> data((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
+			const auto code = conversions::to_base64(data);
 
-				json::value result = json::value::object();
-				result = json::value::string(code);
-				// Send OK reply
-				message.reply(status_codes::OK, result);
-			}
-		}
-		else
-		{
+			json::value result = json::value::object();
+			result = json::value::string(code);
 			// Send OK reply
-			message.reply(status_codes::BadRequest);
+			message.reply(status_codes::OK, result);
 		}
+	}
+	else
+	{
+		// Send OK reply
+		message.reply(status_codes::BadRequest);
 	}
 }
 

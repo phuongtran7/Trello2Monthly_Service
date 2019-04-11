@@ -832,7 +832,5 @@ int main()
 	monthly new_month;
 	new_month.run();
 
-	
-
 	std::getchar();
 }
