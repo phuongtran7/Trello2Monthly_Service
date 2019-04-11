@@ -7,5 +7,6 @@
 #include "cpprest/http_listener.h"
 #include "cpprest/json.h"
 #include "cpprest/uri.h"
+#include "spdlog/sinks/stdout_color_sinks.h"
 
 #endif //PCH_H

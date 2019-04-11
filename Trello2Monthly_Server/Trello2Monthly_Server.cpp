@@ -43,47 +43,103 @@ std::unique_ptr<server> httpserver;
 
 void server::handle_get(http_request message)
 {
-	const auto message_body = message.extract_string().get();
+	// Get the number of querry
+	auto querry = uri::split_query(message.request_uri().query());
 
-	if (message_body.empty())
+	if (!querry.empty())
 	{
-		std::ifstream in_file("Monthly Status Report.pdf", std::ifstream::binary);
-		std::vector<unsigned char> data((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
-		const auto code = conversions::to_base64(data);
+		if (!querry.empty())
+		{
+			if (uri::decode(querry.at(U("task"))) == U("PDF"))
+			{
+				// The client is requesting that it's ready for PDF
+				const auto filename_pdf = conversions::to_string_t(uri::decode(querry.at(U("name")))) + U(".pdf");
+				std::ifstream in_file(filename_pdf, std::ifstream::binary);
+				const std::vector<unsigned char> data((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
+				const auto code = conversions::to_base64(data);
 
-		json::value result = json::value::object();
-		//result = json::value::string(L"GET SUCCEEDED");
-		result = json::value::string(code);
+				json::value result = json::value::object();
+				result = json::value::string(code);
+				// Send OK reply
+				message.reply(status_codes::OK, result);
+			}
+		}
+		else
+		{
+			// Send OK reply
+			message.reply(status_codes::BadRequest);
+		}
 
-		message.reply(status_codes::OK, result);
+		if (!querry.empty())
+		{
+			if (uri::decode(querry.at(U("task"))) == U("DOCX"))
+			{
+				// The client is requesting that it's ready for docx
+				const auto filename_docx = conversions::to_string_t(uri::decode(querry.at(U("name")))) + U(".docx");
+				std::ifstream in_file(filename_docx, std::ifstream::binary);
+				const std::vector<unsigned char> data((std::istreambuf_iterator<char>(in_file)), std::istreambuf_iterator<char>());
+				const auto code = conversions::to_base64(data);
+
+				json::value result = json::value::object();
+				result = json::value::string(code);
+				// Send OK reply
+				message.reply(status_codes::OK, result);
+			}
+		}
+		else
+		{
+			// Send OK reply
+			message.reply(status_codes::BadRequest);
+		}
 	}
 }
 
 void server::handle_post(http_request message)
 {
-	const auto message_body = message.extract_string().get();
+	// TODO: implement receive text file from client then convert to approriate output.
+}
 
-	if (message_body == L"\"PDF\"")
+// Handle receive tex file from client
+void server::handle_put(http_request message)
+{
+	// Get the number of querry
+	auto querry = uri::split_query(message.request_uri().query());
+
+	if (!querry.empty())
 	{
-		std::wcout << "POST Body Success: " << message_body << "\n";
-		json::value result = json::value::object();
-		result = json::value::string(L"Success");
+		if (uri::decode(querry.at(U("task"))) == U("TEX"))
+		{
+			// The client is requesting that it will send the tex file over
+			const auto extracted = message.extract_json().get().as_string();
+			auto convert = conversions::from_base64(extracted);
+			// The file name comes from the second querry
+			//const auto temp_file_name = conversions::to_utf8string(uri::decode(querry.at(U("name")))) + ".tex";
+			auto temp_file_name = conversions::to_utf8string(uri::decode(querry.at(U("name"))));
+			std::ofstream fout(temp_file_name + ".tex", std::ios::out | std::ios::binary);
+			fout.write(reinterpret_cast<const char*>(&convert[0]), convert.size());
+			fout.close();
 
-		message.reply(status_codes::OK, result);
+			// Convert to PDF
+			std::system((fmt::format(R"(pdflatex "{}")", temp_file_name + ".tex")).c_str());
+
+			// Convert to word if pandoc is installed
+			std::system((fmt::format(R"(pandoc -s "{}" -o "{}")", temp_file_name + ".tex", temp_file_name + ".docx")).c_str());
+
+			// Clean up
+			std::remove(fmt::format("{}", temp_file_name + ".aux").c_str());
+			std::remove(fmt::format("{}", temp_file_name + ".log").c_str());
+			std::remove(fmt::format("{}", temp_file_name + ".out").c_str());
+			std::remove(fmt::format("{}", temp_file_name + ".synctex.gz").c_str());
+
+			// Send OK reply
+			message.reply(status_codes::OK);
+		}
 	}
 	else
 	{
-		std::wcout << "POST Body Failed: " << message_body << "\n";
-		json::value result = json::value::object();
-		result = json::value::string(L"Failed");
-
-		message.reply(status_codes::OK, result);
+		// Send OK reply
+		message.reply(status_codes::BadRequest);
 	}
-}
-
-void server::handle_put(http_request message)
-{
-	// TODO: implement receive text file from client then convert to approriate output.
 }
 
 void server::handle_delete(http_request message)

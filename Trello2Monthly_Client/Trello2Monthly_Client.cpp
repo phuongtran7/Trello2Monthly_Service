@@ -670,8 +670,8 @@ private:
 	std::optional<bool> get_pdf()
 	{
 		uri_builder temp_builder(U(""));
+		temp_builder.append_query(U("task"), U("PDF"));
 		temp_builder.append_query(U("name"), conversions::to_string_t(filename_));
-		temp_builder.append_query(U("type"), U("PDF"));
 
 		pplx::task<bool> get_pdf = client_.request(methods::GET, temp_builder.to_string())
 			// Handle response headers arriving.
@@ -682,7 +682,7 @@ private:
 				console->critical("Received response status code from GET PDF: {}.", response.status_code());
 				throw;
 			}
-			console->info("Succeed in POSTING the tex file to server.");
+			console->info("Succeed in GETTING the PDF file to server.");
 			return response.extract_json();
 		})
 			.then([=](json::value json_value)
@@ -711,9 +711,9 @@ private:
 	std::optional<bool> get_docx()
 	{
 		uri_builder temp_builder(U(""));
+		temp_builder.append_query(U("task"), U("DOCX"));
 		temp_builder.append_query(U("name"), conversions::to_string_t(filename_));
-		temp_builder.append_query(U("type"), U("DOCX"));
-
+		
 		pplx::task<bool> get_docx = client_.request(methods::GET, temp_builder.to_string())
 			// Handle response headers arriving.
 			.then([=](http_response response)
@@ -723,7 +723,7 @@ private:
 				console->critical("Received response status code from GET PDF: {}.", response.status_code());
 				throw;
 			}
-			console->info("Succeed in POSTING the tex file to server.");
+			console->info("Succeed in GETTING the DOCX file to server.");
 			return response.extract_json();
 		})
 			.then([=](json::value json_value)
@@ -749,47 +749,6 @@ private:
 		}
 	}
 
-	std::optional<bool> send_file_name()
-	{
-		uri_builder builder;
-
-		json::value send_data = json::value::object();
-		//const auto filename_tex = conversions::to_string_t(filename_) + U(".tex");
-		send_data = json::value::string(conversions::to_string_t(filename_));
-
-		// Send the tex file name over to server first
-		pplx::task<bool> post_task = client_.request(methods::POST, builder.to_string())
-
-			// Handle response headers arriving.
-			.then([=](http_response response)
-		{
-			if (response.status_code() != status_codes::OK)
-			{
-				console->critical("Received response status code from POST file name: {}.", response.status_code());
-				throw;
-			}
-
-			// Extract JSON out of the response
-			return response.extract_json();
-		})
-			// parse JSON
-			.then([=](json::value json_data)
-		{
-			return json_data.as_string() == U("Success");
-		});
-
-		// Wait for all the outstanding I/O to complete and handle any exceptions
-		try
-		{
-			return post_task.get();
-		}
-		catch (const std::exception &e)
-		{
-			console->critical("Error exception: {}", e.what());
-			return std::nullopt;
-		}
-	}
-
 	bool send_tex_file()
 	{
 		const auto filename_tex = conversions::to_string_t(filename_) + U(".tex");
@@ -801,7 +760,8 @@ private:
 		result = json::value::string(code);
 
 		uri_builder builder(U(""));
-		builder.append_query(U("name"), filename_tex);
+		builder.append_query(U("task"), conversions::to_string_t("TEX"));
+		builder.append_query(U("name"), conversions::to_string_t(filename_));
 
 		pplx::task<bool> put_task = client_.request(methods::PUT, builder.to_string(), result)
 			// Handle response headers arriving.
@@ -836,42 +796,14 @@ public:
 
 	void run()
 	{
+		if (send_tex_file())
+		{
+			get_pdf();
+			get_docx();
 
-		auto get_file_task = Concurrency::create_task([&]
-		{
-			// First send the file name over
-			return send_file_name();
-		})
-			.then([=](std::optional<bool> input)
-		{
-			if (input.has_value() && input.value())
-			{
-				return send_tex_file();
-			}
-		})
-			.then([=](std::optional<bool> input)
-		{
-			if (input.has_value() && input.value())
-			{
-				return get_pdf();
-			}
-		})
-			.then([=](std::optional<bool> input)
-		{
-			if (input.has_value() && input.value())
-			{
-				return get_docx();
-			}
-		});
-
-		// Wait for all the outstanding I/O to complete and handle any exceptions
-		try
-		{
-			get_file_task.wait();
-		}
-		catch (const std::exception &e)
-		{
-			std::cout << "Error exception: " << e.what() << "\n";
+			console->info("++++++++++++++++++++++++++++++++++++++++++++");
+			console->info("+ Completed. Please press any key to exit. +");
+			console->info("++++++++++++++++++++++++++++++++++++++++++++");
 		}
 	}
 };
