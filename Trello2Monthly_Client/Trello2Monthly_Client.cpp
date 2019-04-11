@@ -39,6 +39,7 @@ class monthly
 
 	// Create http_client to send the request.
 	http_client client_;
+	http_client local_client_;
 
 	// Due to the way new paragraph is represented in the Card's description, there will be two newline
 	// in the Card's description.
@@ -647,33 +648,13 @@ class monthly
 		file->info("\\end{document}");
 	}
 
-public:
-	monthly() : client_(U("https://api.trello.com"))
-	{
-	}
-
-	void run()
-	{
-		start_console_log();
-		process_data();
-	}
-	std::shared_ptr<spdlog::logger> console = nullptr;
-	std::shared_ptr<spdlog::logger> file = nullptr;
-};
-
-class file_getter
-{
-private:
-	http_client client_;
-	std::shared_ptr<spdlog::logger> console = nullptr;
-
 	std::optional<bool> get_pdf()
 	{
 		uri_builder temp_builder(U(""));
 		temp_builder.append_query(U("task"), U("PDF"));
 		temp_builder.append_query(U("name"), conversions::to_string_t(filename_));
 
-		pplx::task<bool> get_pdf = client_.request(methods::GET, temp_builder.to_string())
+		pplx::task<bool> get_pdf = local_client_.request(methods::GET, temp_builder.to_string())
 			// Handle response headers arriving.
 			.then([=](http_response response)
 		{
@@ -713,8 +694,8 @@ private:
 		uri_builder temp_builder(U(""));
 		temp_builder.append_query(U("task"), U("DOCX"));
 		temp_builder.append_query(U("name"), conversions::to_string_t(filename_));
-		
-		pplx::task<bool> get_docx = client_.request(methods::GET, temp_builder.to_string())
+
+		pplx::task<bool> get_docx = local_client_.request(methods::GET, temp_builder.to_string())
 			// Handle response headers arriving.
 			.then([=](http_response response)
 		{
@@ -763,7 +744,7 @@ private:
 		builder.append_query(U("task"), conversions::to_string_t("TEX"));
 		builder.append_query(U("name"), conversions::to_string_t(filename_));
 
-		pplx::task<bool> put_task = client_.request(methods::PUT, builder.to_string(), result)
+		pplx::task<bool> put_task = local_client_.request(methods::PUT, builder.to_string(), result)
 			// Handle response headers arriving.
 			.then([=](http_response response)
 		{
@@ -789,23 +770,31 @@ private:
 	}
 
 public:
-	file_getter() : client_(U("http://localhost:34568"))
+	monthly() : client_(U("https://api.trello.com")), local_client_(U("http://localhost:34568"))
 	{
-		console = spdlog::get("console_sink");
 	}
 
 	void run()
 	{
-		if (send_tex_file())
-		{
-			get_pdf();
-			get_docx();
+		start_console_log();
+		process_data();
 
-			console->info("++++++++++++++++++++++++++++++++++++++++++++");
-			console->info("+ Completed. Please press any key to exit. +");
-			console->info("++++++++++++++++++++++++++++++++++++++++++++");
+		// Check whether we succeeded in creating the tex file before proceed
+		if (std::filesystem::exists(fmt::format("{}.tex", filename_)))
+		{
+			if (send_tex_file())
+			{
+				get_pdf();
+				get_docx();
+
+				console->info("++++++++++++++++++++++++++++++++++++++++++++");
+				console->info("+ Completed. Please press any key to exit. +");
+				console->info("++++++++++++++++++++++++++++++++++++++++++++");
+			}
 		}
 	}
+	std::shared_ptr<spdlog::logger> console = nullptr;
+	std::shared_ptr<spdlog::logger> file = nullptr;
 };
 
 int main()
@@ -813,12 +802,7 @@ int main()
 	monthly new_month;
 	new_month.run();
 
-	// Check whether we succeeded in creating the tex file before proceed
-	if (std::filesystem::exists(fmt::format("{}.tex", filename_)))
-	{
-		file_getter file;
-		file.run();
-	}
+	
 
 	std::getchar();
 }
