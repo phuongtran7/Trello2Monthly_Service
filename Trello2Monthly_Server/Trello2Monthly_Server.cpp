@@ -59,7 +59,7 @@ void server::handle_get(const http_request& message) const
 			json::value result = json::value::object();
 			result = json::value::string(code);
 			// Send OK reply
-			message.reply(status_codes::OK, result);
+			message.reply(status_codes::OK, result).get();
 		}
 
 		if (uri::decode(querry.at(U("task"))) == U("DOCX"))
@@ -73,20 +73,20 @@ void server::handle_get(const http_request& message) const
 			json::value result = json::value::object();
 			result = json::value::string(code);
 			// Send OK reply
-			message.reply(status_codes::OK, result);
+			message.reply(status_codes::OK, result).get();
 		}
 	}
 	else
 	{
 		// Send OK reply
-		message.reply(status_codes::BadRequest);
+		message.reply(status_codes::BadRequest).get();
 	}
 }
 
 void server::handle_post(const http_request& message) const
 {
 	// Send OK reply
-	message.reply(status_codes::OK);
+	message.reply(status_codes::OK).get();
 }
 
 // Handle receive tex file from client
@@ -122,13 +122,13 @@ void server::handle_put(const http_request& message) const
 			std::remove(fmt::format("{}", temp_file_name + ".synctex.gz").c_str());
 
 			// Send OK reply
-			message.reply(status_codes::OK);
+			message.reply(status_codes::OK).get();
 		}
 	}
 	else
 	{
 		// Send BadRequest reply
-		message.reply(status_codes::BadRequest);
+		message.reply(status_codes::BadRequest).get();
 	}
 }
 
@@ -147,7 +147,7 @@ void server::handle_delete(const http_request& message) const
 		std::remove(fmt::format("{}", temp_file_name + ".pdf").c_str());
 
 		// Send OK reply
-		message.reply(status_codes::OK);
+		message.reply(status_codes::OK).get();
 	}
 }
 
@@ -157,14 +157,14 @@ void on_initialize(const string_t& address)
 
 	auto addr = uri.to_uri().to_string();
 	httpserver = std::make_unique<server>(addr);
-	httpserver->open().wait();
+	httpserver->open().get();
 
 	std::wcout << string_t(U("Listening for requests at: ")) << addr << std::endl;
 }
 
 void on_shutdown()
 {
-	httpserver->close().wait();
+	httpserver->close().get();
 }
 int main()
 {
