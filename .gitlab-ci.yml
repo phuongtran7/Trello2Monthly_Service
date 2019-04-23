@@ -1,0 +1,7 @@
+stages:
+  - build
+
+build:
+  stage: build
+  script:
+    - 'msbuild "Trello_2_Monthly_Service.sln" /p:Configuration=Release' # build the project
